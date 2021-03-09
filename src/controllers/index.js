@@ -7,13 +7,14 @@ const userModel = require('../Models/users.js');
 const auth = require('../middleware/auth.js')
 const Cryptr = require('cryptr');
 const AWS = require('aws-sdk')
-const nodemailer = require('nodemailer')
+//const nodemailer = require('nodemailer')
 const index = require('../controllers/index.js')
+const sendMail = require('../Email/email.js')
 
 const basePath = path.join(__dirname,'..','..')
 const pathToPublic = path.join(__dirname,'..','..','public','html')
 
-const cryptr = new Cryptr('myTotalySecretKey');
+const cryptr = new Cryptr(process.env.SECRET_STRING);
 
 let generateToken = async function(user){
 
@@ -30,39 +31,38 @@ let generateToken = async function(user){
 const getSignup = (req,res,next) => res.redirect('/image')
 
 const postSignup = async (req,res,next) => {
-    //console.log(req.file)
-    try{
-        const user = new userModel({
-            username : req.body.username,
-            email: req.body.email,
-            password : req.body.password
-        })
-        await user.save()
 
-        let mailTransporter = nodemailer.createTransport({ 
-            service: 'gmail', 
-            auth: { 
-                user: process.env.EMAIL, 
-                pass: process.env.PASSWORD
-            } 
-        }); 
-          
-        let mailDetails = { 
-            from: process.env.EMAIL, 
-            to: user.email, 
-            subject: 'Sign Up Confirmed', 
-            text: 'Congratulations! You can now login'
-        }; 
-          
-        mailTransporter.sendMail(mailDetails, function(err, data) { 
-            if(err) { 
-                console.log(err); 
-            } else { 
-                console.log('Email sent successfully'); 
-            } 
-        }); 
+    try{
+        const S3 = new AWS.S3({
+        accessKeyId : 'ASIARLOHTBV6YHNIR6GF',
+        secretAccessKey: 'EP0JOex/PpZwcv5jwl3OmFEQxqBal9UdUi4HqD0E',
+        sessionToken: 'FwoGZXIvYXdzEEIaDAXkCEk3A5vIUhWFpiLGAejWzXgMV3IqfzUjW6u3ElEVwoTmPQ2wtKtUn8buFYrkfaKSlA6tlWOXUBEPCA6MqI+SYucdEJWCKf72xcM6dka0T2WkvHM+KyAt3iGUZJRcpO6MC1agUNyA00AinpuZQKMAl5r6w+bVnMnT4xxP/G7BG062MeN1PAVb3+WHcvBeT51AyoDDZiC+zF63uMICUlx1wjUoPbtAvJS6v3gcg8EUsExmD3Q+iFchdTp8pWF/V7e9voVV0SrXpc8JDsE47DinrMw4/iiD4JyCBjIt6pmMPBY5tju+xsmupTgzxozQyDZROAQaEwgzxtGiVT+XkWmyg7CR6Gna60nv'
+        })
+        
+        const params = {
+            Bucket: 'prcts3',
+            Key : req.body.username+'_profile_pic.jpg',
+            Body: req.file.buffer
+        }
     
-        res.redirect('/')
+        S3.upload(params, async (err,data)=>{
+            if(err){
+                return res.send("Can not post picture , please try again with a different one ...",err)
+            }
+            else{
+                const user = new userModel({
+                    username : req.body.username,
+                    email: req.body.email,
+                    password : req.body.password,
+                    imageURL : data.Location
+                })
+                await user.save()
+
+                sendMail(user.email,"Sign Up Confirmed","Congratulations! You can now login")
+            
+                res.redirect('/')
+            }
+        })
     }
     catch(e){
         res.send("error while signing up , try again after some time")
@@ -90,35 +90,12 @@ const getForgotPassword = (req,res,next) => res.sendFile(pathToPublic+'/forgotpa
 const postForgotPassword = async (req,res,next) => {
     
     const email = req.body.email
-
-    const user = await userModel.findOne({email:email})
-    
-    const token = await generateToken(user)
-
     try{
+        const user = await userModel.findOne({email:email})
+    
+        const token = await generateToken(user)
 
-        let mailTransporter = nodemailer.createTransport({ 
-            service: 'gmail', 
-            auth: { 
-                user: 'userdummy.dum@gmail.com', 
-                pass: '123$567*90'
-            } 
-        }); 
-          
-        let mailDetails = { 
-            from: 'userdummy.dum@gmail.com', 
-            to: req.body.email, 
-            subject: 'Forgot Password Link', 
-            text: 'http://127.0.0.1:3000/forgotPassword/token?jwt='+token
-        }; 
-          
-        mailTransporter.sendMail(mailDetails, function(err, data) { 
-            if(err) { 
-                console.log(err); 
-            } else { 
-                console.log('Link for resetting password shared with you in email you registered with. Check your mail.'); 
-            } 
-        }); 
+        sendMail(req.body.email,"Forgot Password Link",'http://127.0.0.1:3000/forgotPassword/token?jwt='+token)
     
         res.send("Link for resetting password shared with you in email you registered with. Check your mail.")
     }
@@ -127,7 +104,7 @@ const postForgotPassword = async (req,res,next) => {
     }    
 }
 
-const getImage = (req,res,next) => res.sendFile(pathToPublic+'/image.html') 
+const getImage = (req,res,next) => res.render('image.ejs',{imageURL : req.user.imageURL}) 
 
 const getLogout = async (req,res,next) => {
     //console.log(req.user)
@@ -192,7 +169,7 @@ const postResetPassword = async (req,res,next)=>{
 }
 
 
-module.exports = {getSignup,getForgotPassword,getForgotPasswordToken,getImage,getLogout,getResetPassword,getLogin,
-                    postForgotPassword,postForgotPasswordToken,postLogin,postResetPassword,postSignup}
+module.exports = {getSignup,getForgotPassword,getForgotPasswordToken,getImage,getLogout,getResetPassword,
+                  getLogin,postForgotPassword,postForgotPasswordToken,postLogin,postResetPassword,postSignup}
 
 
