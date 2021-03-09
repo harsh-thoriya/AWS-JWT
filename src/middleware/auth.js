@@ -26,4 +26,23 @@ const auth = async (req, res, next) => {
     }
 }
 
-module.exports = auth
+const signupAuth = async (req, res, next) => {
+    try {
+        const decryptedToken = cryptr.decrypt(req.cookies.token);
+        const decoded = jsonWebTokens.verify(decryptedToken,'abcd')
+        
+        const user = await userModel.findOne({ _id: decoded._id, 'jwts.token': req.cookies.token })
+
+        if (!user) {
+            throw new Error()
+        }
+
+        req.token = decryptedToken
+        req.user = user
+        return next()
+    } catch (e) {
+        return res.sendFile(pathToPublic+'/signup.html')
+    }
+}
+
+module.exports = {auth,signupAuth}

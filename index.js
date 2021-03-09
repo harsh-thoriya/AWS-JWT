@@ -8,7 +8,6 @@ const cookieParser = require('cookie-parser')
 const jsonWebToken = require('jsonwebtoken')
 const AWS = require('aws-sdk')
 const uuid = require('uuid')
-//const jsonwt = require('express-jwt')
 
 mongoose.connect('mongodb://localhost/AWS&JWT')
 
@@ -23,7 +22,6 @@ app.use(bodyParser.urlencoded({
 
 app.use(bodyParser.json());
 app.use(cookieParser())
-//app.use(jsonwt({secret:'abcd',algorithms:['HS256'],getToken: req => req.cookies.token}))
 app.use(express.static(path.join(__dirname, 'public','html')));
 app.use(express.static(path.join(__dirname, 'profilePics')));
 

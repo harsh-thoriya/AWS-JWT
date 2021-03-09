@@ -17,6 +17,7 @@
     "crypter": "^0.2.2",
     "crypto-js": "^4.0.0",
     "cryptr": "^6.0.2",
+    "dotenv": "^8.2.0",
     "express": "^4.17.1",
     "express-jwt": "^6.0.0",
     "jsonwebtoken": "^8.5.1",
