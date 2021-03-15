@@ -33,20 +33,22 @@ const postSignup = async (req,res,next) => {
 
     try{
         const S3 = new AWS.S3({
-        accessKeyId : 'ASIARLOHTBV6YHNIR6GF',
-        secretAccessKey: 'EP0JOex/PpZwcv5jwl3OmFEQxqBal9UdUi4HqD0E',
-        sessionToken: 'FwoGZXIvYXdzEEIaDAXkCEk3A5vIUhWFpiLGAejWzXgMV3IqfzUjW6u3ElEVwoTmPQ2wtKtUn8buFYrkfaKSlA6tlWOXUBEPCA6MqI+SYucdEJWCKf72xcM6dka0T2WkvHM+KyAt3iGUZJRcpO6MC1agUNyA00AinpuZQKMAl5r6w+bVnMnT4xxP/G7BG062MeN1PAVb3+WHcvBeT51AyoDDZiC+zF63uMICUlx1wjUoPbtAvJS6v3gcg8EUsExmD3Q+iFchdTp8pWF/V7e9voVV0SrXpc8JDsE47DinrMw4/iiD4JyCBjIt6pmMPBY5tju+xsmupTgzxozQyDZROAQaEwgzxtGiVT+XkWmyg7CR6Gna60nv'
+        accessKeyId : 'ASIARLOHTBV6QQMJ32U5',
+        secretAccessKey: 'V3OV57tQbQZb9EwURkRKhZZlamz4AsYIcRkgCHjB',
+        sessionToken: 'FwoGZXIvYXdzENX//////////wEaDALA8+jzyL4sZ6g4HiLGAYBuJqFRHLpj+ry5AbZ6Q+Dvw3aqU21aU9LO8uYEH5PFxFKekGQG1Q9Mfu6Z3PlgSFod/SoDXW0HoUMvU8mEn0jZA+sB3Q3Xjv3mzEq5Cap3/0sLf0EyZYS0zSswZ70CXTqdVDXzrKB4FhG/XCW0dHNOj7xhodTIlKg636CM608enW9Zyib91fchi4zhPowChSco3z97FaRakspcWTd4Iwb4xaz4Nflj3j5CP2hRGAFvJ6EeMhp/1YKjF+FG+ueWMQOfXKYH/yjPk72CBjIttq30PZHvx6MB49hrhl9ZEvpgCbpXdxvXi9z3ydxOp+fhSLrl038KUbIsvxOC'
         })
         
         const params = {
             Bucket: 'prcts3',
             Key : req.body.username+'_profile_pic.jpg',
-            Body: req.file.buffer
+            Body: req.file.buffer,
+            ContentType: 'image/jpg'
         }
-        console.log("Buffer :::: ",req.file.buffer)
-        console.log("String Buffer :::: ",req.file.buffer.toString())
+        //console.log("Buffer :::: ",req.file.buffer)
+        //console.log("String Buffer :::: ",req.file.buffer.toString())
         S3.upload(params, async (err,data)=>{
             if(err){
+                console.log(err)
                 return res.send("Can not post picture , please try again with a different one ...")
             }
             else{
