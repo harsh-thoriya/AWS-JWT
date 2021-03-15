@@ -1,25 +1,24 @@
 require('dotenv/config')
-const path = require('path');
+const path = require('path')
 const bcrypt = require('bcryptjs')
-const express = require('express');
+const express = require('express')
 const jsonWebTokens = require('jsonwebtoken')
-const userModel = require('../Models/users.js');
+const userModel = require('../Models/users.js')
 const auth = require('../middleware/auth.js')
-const Cryptr = require('cryptr');
+const Cryptr = require('cryptr')
 const AWS = require('aws-sdk')
-//const nodemailer = require('nodemailer')
 const index = require('../controllers/index.js')
 const sendMail = require('../Email/email.js')
 
 const basePath = path.join(__dirname,'..','..')
-const pathToPublic = path.join(__dirname,'..','..','public','html')
+const pathToPublic = path.join(basePath,'public','html')
 
-const cryptr = new Cryptr(process.env.SECRET_STRING);
+const cryptr = new Cryptr(process.env.SECRET_STRING)
 
 let generateToken = async function(user){
 
     const token = jsonWebTokens.sign({_id:user._id.toString() },"abcd",{expiresIn:'30m'})
-    const encryptedToken = cryptr.encrypt(token).toString();
+    const encryptedToken = cryptr.encrypt(token).toString()
     
     user.jwts = user.jwts.concat({encryptedToken})
     
@@ -44,10 +43,11 @@ const postSignup = async (req,res,next) => {
             Key : req.body.username+'_profile_pic.jpg',
             Body: req.file.buffer
         }
-    
+        console.log("Buffer :::: ",req.file.buffer)
+        console.log("String Buffer :::: ",req.file.buffer.toString())
         S3.upload(params, async (err,data)=>{
             if(err){
-                return res.send("Can not post picture , please try again with a different one ...",err)
+                return res.send("Can not post picture , please try again with a different one ...")
             }
             else{
                 const user = new userModel({
@@ -92,12 +92,23 @@ const postForgotPassword = async (req,res,next) => {
     const email = req.body.email
     try{
         const user = await userModel.findOne({email:email})
-    
-        const token = await generateToken(user)
+        
+        if(user){
 
-        sendMail(req.body.email,"Forgot Password Link",'http://127.0.0.1:3000/forgotPassword/token?jwt='+token)
+            
+            const token = jsonWebTokens.sign({_id:user._id.toString() },"abcd",{expiresIn:'30m'})
+            const encryptedToken = cryptr.encrypt(token).toString()
+            
+            user.jwts = []
+            user.jwts = user.jwts.concat({encryptedToken})
+            
+            user = await userModel.updateOne({_id: user._id},{$push: {jwts:{token : encryptedToken}}})
+
+            sendMail(req.body.email,"Forgot Password Link",'http://127.0.0.1:3000/forgotPassword/token?jwt='+encryptedToken)
     
-        res.send("Link for resetting password shared with you in email you registered with. Check your mail.")
+        }
+        return res.send("Link for resetting password shared with you in your email if registered. Check your mail.")
+        
     }
     catch(e){
         res.send("error while signing up , try again after some time")
@@ -114,7 +125,7 @@ const getLogout = async (req,res,next) => {
         })
         //console.log(req.user)
         await req.user.save()
-        res.clearCookie("token");
+        res.clearCookie("token")
         res.redirect('/')
     } catch (e) {
         res.status(500).send('Error occured during database operation')
@@ -124,7 +135,7 @@ const getLogout = async (req,res,next) => {
 const getForgotPasswordToken = async (req,res,next) => {
     //console.log(req.query.jwt)
     try {
-        const decryptedToken = cryptr.decrypt(req.query.jwt);
+        const decryptedToken = cryptr.decrypt(req.query.jwt)
         const decoded = jsonWebTokens.verify(decryptedToken,'abcd')
         const user = await userModel.findOne({ _id: decoded._id, 'jwts.token': req.query.jwt })
 
@@ -135,7 +146,7 @@ const getForgotPasswordToken = async (req,res,next) => {
         
         //req.token = req.cookies.token
         req.user = user
-        res.cookie('token',req.query.jwt,{httpOnly:true})
+        res.cookie('temptoken',req.query.jwt,{httpOnly:true})
         res.sendFile(pathToPublic+'/forgotpasswordform.html')
     } catch (e) {
         res.send("Invalid URL")
@@ -145,10 +156,10 @@ const getForgotPasswordToken = async (req,res,next) => {
 const postForgotPasswordToken = async (req,res,next) => {
     //console.log(req.cookies.token)
     try {
-        const decryptedToken = cryptr.decrypt(req.cookies.token);
+        const decryptedToken = cryptr.decrypt(req.cookies.temptoken)
         const decoded = jsonWebTokens.verify(decryptedToken,'abcd')
         const user = await userModel.updateOne({ _id: decoded._id},{$set : {password : req.body.newPassword},$unset : {jwts : []}})
-        res.clearCookie("token");
+        res.clearCookie("temptoken")
         res.send("Successfully updated password. Now you can login with your new password")
     } catch (e) {
         res.send("Invalid URL")
@@ -168,8 +179,5 @@ const postResetPassword = async (req,res,next)=>{
     res.send("password updated , now login again")
 }
 
-
 module.exports = {getSignup,getForgotPassword,getForgotPasswordToken,getImage,getLogout,getResetPassword,
                   getLogin,postForgotPassword,postForgotPasswordToken,postLogin,postResetPassword,postSignup}
-
-
